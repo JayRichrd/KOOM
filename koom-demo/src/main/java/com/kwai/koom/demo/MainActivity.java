@@ -1,15 +1,22 @@
 package com.kwai.koom.demo;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.kwai.koom.demo.leaked.LeakMaker;
 import com.kwai.koom.javaoom.KOOM;
 import com.kwai.koom.javaoom.KOOMProgressListener;
+
+import java.util.ArrayList;
 
 /**
  * Copyright 2020 Kwai, Inc. All rights reserved.
@@ -32,6 +39,9 @@ public class MainActivity extends AppCompatActivity {
 
   private Button reportButton;
   private TextView reportText;
+  private String[] internetPermission = new String[]{Manifest.permission.INTERNET,Manifest.permission.ACCESS_WIFI_STATE};
+  private String[] dataPermission = new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+  public static final int PERMISSION_REQUEST_FROM_MAIN = 1;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +60,22 @@ public class MainActivity extends AppCompatActivity {
       testReport();
     });
 
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      requestNecessaryPermission(internetPermission);
+      requestNecessaryPermission(dataPermission);
+    }
+  }
+
+  private void requestNecessaryPermission(String[] internetPermission) {
+    ArrayList<String> permissionList = new ArrayList<>();
+    for (String permission : internetPermission) {
+      if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+        permissionList.add(permission);
+      }
+    }
+    if (permissionList.size() != 0) {
+      ActivityCompat.requestPermissions(this, internetPermission, PERMISSION_REQUEST_FROM_MAIN);
+    }
   }
 
   private void changeStatusText(KOOMProgressListener.Progress progress) {

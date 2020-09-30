@@ -26,6 +26,8 @@ dependencies {
     implementation deps.androidx.appcompat
     implementation deps.androidx.constraintlayout
     implementation deps.material
+    implementation 'com.google.code.gson:gson:2.8.6'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.0'
     testImplementation deps.junit
     androidTestImplementation deps.androidx.test.ext
     androidTestImplementation deps.androidx.test.espresso

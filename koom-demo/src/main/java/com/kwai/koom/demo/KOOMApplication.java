@@ -1,13 +1,26 @@
 package com.kwai.koom.demo;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import android.app.Application;
+import android.util.Log;
 
 import com.kwai.koom.javaoom.KOOM;
 import com.kwai.koom.javaoom.common.KConfig;
 import com.kwai.koom.javaoom.common.KLog;
 import com.kwai.koom.javaoom.dump.ForkJvmHeapDumper;
+import com.kwai.koom.javaoom.report.HeapReportUploader;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 /**
  * Copyright 2020 Kwai, Inc. All rights reserved.
@@ -27,11 +40,14 @@ import com.kwai.koom.javaoom.dump.ForkJvmHeapDumper;
  * @author Rui Li <lirui05@kuaishou.com>
  */
 public class KOOMApplication extends Application {
+  public static final String TAG = "KOOMApplication";
+  public static final String URL = "http://10.46.55.55:8899/makebug/";
 
   @Override
   public void onCreate() {
     super.onCreate();
     KOOM.init(this);
+    listenReportGenerateStatus();
   }
 
   //Example of how to get report manually.
@@ -44,10 +60,39 @@ public class KOOMApplication extends Application {
 
   //Example of how to listen report's generate status.
   public void listenReportGenerateStatus() {
-    KOOM.getInstance().setHeapReportUploader(file -> {
-      //Upload the report or do something else.
-      //File is deleted automatically when callback is done by default.
-    });
+    KOOM.getInstance().setHeapReportUploader(new HeapReportUploader() {
+      @Override
+      public void upload(File file) {
+          //Upload the report or do something else.
+          //File is deleted automatically when callback is done by default.
+          Log.i(TAG, "listenReportGenerateStatus: file name: " + file.getName() + ", file path: " + file.getPath());
+          //创建RequestBody
+          MultipartBody.Builder builder = new MultipartBody.Builder();
+          builder.addFormDataPart("leak_content", file.getName(), RequestBody.create(MediaType.parse("application/octet-stream"), file));
+          MultipartBody multipartBody = builder.build();
+          Request request = new Request.Builder().url(URL).post(multipartBody).build();
+          OkHttpClient client = new OkHttpClient();
+          Call call = client.newBuilder().writeTimeout(10, TimeUnit.SECONDS).build().newCall(request);
+          call.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+              Log.e(TAG, "onFailure### error: " + e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) {
+              Log.e(TAG, "onResponse### response: " + response.message());
+              file.delete();
+            }
+          });
+        }
+
+        @Override
+        public boolean deleteWhenUploaded() {
+          return false;
+        }
+      }
+    );
   }
 
   //Example of how to set custom config.
